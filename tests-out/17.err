@@ -1,0 +1,3 @@
+tests/p1.sh: line 3: ls: command not found
+tests/p2.sh: line 2: sleep: command not found
+tests/p2.sh: line 4: ls: command not found
