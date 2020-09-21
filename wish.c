@@ -91,6 +91,7 @@ int setPath(char **parsedCommand)
         }
         strcat(pathCopy, parsedCommand[i]);
     }
+    printf("Path : %s\n", pathCopy);
     putenv(pathCopy); /* set path env variable */
     return 0;
 }
@@ -153,6 +154,7 @@ int listDirectory(char **parsedCommand, char error_message[])
             (index == 0 || parsedCommand[index + 1] == NULL || strcmp(parsedCommand[index + 1], "") == 0 ||
              strcmp(parsedCommand[index + 1], ">") == 0 || strcmp(parsedCommand[index + 2], ">") == 0 || parsedCommand[index + 2] != NULL))
         {
+	    printf("Failed to list directory:\n");
             syntaxError = 1;
             break;
         }
@@ -210,6 +212,7 @@ int listDirectory(char **parsedCommand, char error_message[])
                     }
                     if (execv(extraPathCopy, parsedCommand) < 0)
                     {
+			printf("Exec failed\n");
                         perror(parsedCommand[0]);
                     }
                 }
@@ -234,6 +237,7 @@ int listDirectory(char **parsedCommand, char error_message[])
 
 int externalCommands(char **parsedInput, char error_message[])
 {
+    printf("External command : %s\n", parsedInput[0]);
     char *getPath = NULL, *pathCopy = NULL, *token = NULL;
     char extraString[20468];
     int i = 0, parallelCount = 1, index = 0, fd = 0, stat_loc;
@@ -255,7 +259,7 @@ int externalCommands(char **parsedInput, char error_message[])
             i++;
         }
         pid_t child_pids[parallelCount + 1]; /* Intialize the child_pids based on the number of commands */
-        for (i = 0, index = 0; i < parallelCount + 1 && parsedInput[index] != NULL; i++, index = index + 2)
+        for (i = 0, index = 0; i < parallelCount && parsedInput[index] != NULL; i++, index = index + 2)
         {
             pathCopy = getenv("PATH");
             token = strtok(pathCopy, ":");
@@ -264,32 +268,44 @@ int externalCommands(char **parsedInput, char error_message[])
                 strcpy(extraString, token);
                 strcat(extraString, "/");
                 strcat(extraString, parsedInput[index]);
-             //   printf("$$$$$$$$$$$$$$$$$$$$$$$$$$%s\n", extraString);
+                printf("$$$$$$$$$$$$$$$$$$$$$$$$$$%s\n", extraString);
                 fd = access(extraString, X_OK);
                 if (fd != -1)
                 {
+		    printf("Created access\n");
                     child_pids[i] = fork();
                     if (child_pids[i] < 0)
                     {
                         write(STDERR_FILENO, error_message, strlen(error_message));
+			printf("Failed to create child process\n");
                         exit(1);
                     }
+
+		    printf("Child process created : %d\n", child_pids[i]);
                     if (child_pids[i] == 0)
                     {
                         if (execv(extraString, parsedInput) < 0)
                         {
+			    printf("Error while executing the command \n");
                             perror(parsedInput[index]);
-                        }
+                        } else {
+			   printf("Execution failed with non zero exit code\n");
+			}
                     }
                     else
                     {
+			printf("Waiting for the process %d...\n", child_pids[i]);
                         waitpid(child_pids[i], &stat_loc, WUNTRACED);
+			printf("Process completed. %d \n", child_pids[i]);
                         break;
                     }
-                }
+                } else {
+			printf("Failed to create file descriptor\n");
+		}
                 token = strtok(NULL, ":");
                 if (fd == -1)
                 {
+		    printf("Failed to create file descriptor\n");
                     write(STDERR_FILENO, error_message, strlen(error_message));
                 }
             }
